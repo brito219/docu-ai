@@ -41,7 +41,17 @@ docker compose up --build
 
 - Frontend: `http://localhost:5173`
 - Backend health check: `http://localhost:8000/health`
+- Backend upload endpoint: `http://localhost:8000/documents/upload`
 - PostgreSQL: `localhost:5432`
+
+## Day 2 Flow
+
+The application now supports local PDF upload with metadata persistence.
+
+- The frontend sends the selected PDF as `multipart/form-data`
+- The backend validates extension, content type, file size, and PDF signature
+- The file is stored in the local storage directory configured by `LOCAL_STORAGE_PATH`
+- Document metadata is stored in PostgreSQL
 
 ## Running Without Docker
 
@@ -67,5 +77,6 @@ npm run dev -- --host 0.0.0.0
 
 - `docker compose up --build` completes successfully
 - `GET /health` returns HTTP `200`
-- Frontend loads and shows the Day 1 status page
+- Frontend loads and shows the upload screen
+- Uploading a valid PDF returns success and persists metadata
 - PostgreSQL container starts with the configured credentials
