@@ -12,7 +12,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="DocuAI Viewer API",
         version="0.2.0",
-        description="Day 2 upload and local persistence for the DocuAI Viewer backend.",
+        description="API for uploading, validating, and storing PDF documents with local file persistence and PostgreSQL metadata storage.",
     )
 
     app.add_middleware(
@@ -28,7 +28,7 @@ def create_app() -> FastAPI:
         settings.local_storage_path.mkdir(parents=True, exist_ok=True)
         Base.metadata.create_all(bind=engine)
 
-    @app.get("/health", tags=["system"])
+    @app.get("/health", tags=["system"], summary="Health check")
     def health_check() -> dict[str, str]:
         return {
             "status": "ok",

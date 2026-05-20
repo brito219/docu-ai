@@ -36,7 +36,7 @@ const selectedFileSummary = computed(() => {
 async function submitUpload() {
   if (!file.value) {
     uploadState.value = 'error'
-    errorMessage.value = 'Selecione um arquivo PDF antes de enviar.'
+    errorMessage.value = 'Select a PDF file before uploading.'
     return
   }
 
@@ -58,7 +58,7 @@ async function submitUpload() {
     uploadState.value = 'success'
   } catch (error: unknown) {
     uploadState.value = 'error'
-    errorMessage.value = 'Falha ao enviar o arquivo.'
+    errorMessage.value = 'The file upload failed.'
 
     if (typeof error === 'object' && error && 'response' in error) {
       const response = error.response as { data?: { detail?: string } }
@@ -84,10 +84,10 @@ function handleFileSelection(files: File | File[] | null) {
         <div class="upload-card">
           <div class="headline-block">
             <p class="eyebrow">DocuAI Viewer</p>
-            <h1>Upload e persistencia local de PDFs</h1>
+            <h1>Local PDF upload and persistence</h1>
             <p class="lead">
-              Envie um PDF de ate {{ maxUploadSizeMb }} MB. O backend valida o
-              arquivo, salva localmente e registra os metadados no PostgreSQL.
+              Upload a PDF up to {{ maxUploadSizeMb }} MB. The backend validates
+              the file, stores it locally, and records metadata in PostgreSQL.
             </p>
           </div>
 
@@ -106,11 +106,11 @@ function handleFileSelection(files: File | File[] | null) {
             variant="tonal"
             class="message"
           >
-            Upload concluido com sucesso para {{ successDocument.original_filename }}.
+            Upload completed successfully for {{ successDocument.original_filename }}.
           </v-alert>
 
           <v-file-input
-            label="Selecionar PDF"
+            label="Select PDF"
             accept=".pdf,application/pdf"
             prepend-icon="mdi-file-pdf-box"
             variant="outlined"
@@ -132,22 +132,22 @@ function handleFileSelection(files: File | File[] | null) {
             :disabled="uploadState === 'loading'"
             @click="submitUpload"
           >
-            Enviar PDF
+            Upload PDF
           </v-btn>
 
           <div v-if="successDocument" class="result-panel">
-            <p class="result-title">Metadados registrados</p>
+            <p class="result-title">Stored metadata</p>
             <dl class="result-grid">
               <div>
                 <dt>ID</dt>
                 <dd>{{ successDocument.id }}</dd>
               </div>
               <div>
-                <dt>Nome original</dt>
+                <dt>Original name</dt>
                 <dd>{{ successDocument.original_filename }}</dd>
               </div>
               <div>
-                <dt>Tamanho</dt>
+                <dt>File size</dt>
                 <dd>{{ successDocument.size_bytes }} bytes</dd>
               </div>
               <div>
@@ -159,8 +159,8 @@ function handleFileSelection(files: File | File[] | null) {
                 <dd>{{ successDocument.storage_type }}</dd>
               </div>
               <div>
-                <dt>Criado em</dt>
-                <dd>{{ new Date(successDocument.created_at).toLocaleString('pt-BR') }}</dd>
+                <dt>Created at</dt>
+                <dd>{{ new Date(successDocument.created_at).toLocaleString('en-US') }}</dd>
               </div>
             </dl>
           </div>

@@ -13,27 +13,33 @@ def validate_pdf_upload(file: UploadFile, payload: bytes) -> None:
     settings = get_settings()
 
     if not file.filename:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nenhum arquivo foi enviado.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No file was uploaded.")
 
     if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="O arquivo deve ter extensao .pdf.")
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="The uploaded file must use the .pdf extension.",
+        )
 
     if file.content_type not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Tipo de arquivo invalido para PDF.")
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="The uploaded file does not use an allowed PDF content type.",
+        )
 
     if not payload:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O arquivo enviado esta vazio.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The uploaded file is empty.")
 
     if len(payload) > settings.max_upload_size_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"O arquivo excede o limite de {settings.max_upload_size_mb} MB.",
+            detail=f"The uploaded file exceeds the {settings.max_upload_size_mb} MB limit.",
         )
 
     if not payload.startswith(b"%PDF"):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="O conteudo enviado nao corresponde a um PDF valido.",
+            detail="The uploaded content does not match a valid PDF signature.",
         )
 
 

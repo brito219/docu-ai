@@ -1,40 +1,40 @@
-# Dia 1 — Setup do Projeto
+# Day 1 — Project Setup
 
-## Visao geral
+## Overview
 
-O Dia 1 saiu de um repositório praticamente documental para uma base fullstack executável. Antes dele, o projeto tinha essencialmente `descricao.md` e quase nenhuma estrutura operacional. O objetivo foi criar uma espinha dorsal previsível para desenvolvimento local, com frontend, backend e banco subindo de forma padronizada.
+Day 1 moved the repository from a documentation-first state to an executable full-stack baseline. Before that point, the project mostly contained `descricao.md` and very little operational structure. The goal was to create a predictable local development foundation with a frontend, backend, and database that could run together in a standardized way.
 
-O resultado prático do Dia 1 foi:
+The practical output of Day 1 was:
 
-- frontend Vue 3 acessível
-- backend FastAPI respondendo `GET /health`
-- PostgreSQL via Docker
-- documentação mínima e variáveis de ambiente definidas
+- a reachable Vue 3 frontend
+- a FastAPI backend responding to `GET /health`
+- PostgreSQL running through Docker
+- a minimal set of environment variables and project documentation
 
-## O que foi feito
+## What was implemented
 
-### Backend inicial
+### Initial backend
 
-Foi criado um backend mínimo em FastAPI com:
+A minimal FastAPI backend was created with:
 
 - `backend/app/main.py`
 - `backend/requirements.txt`
 - `backend/Dockerfile`
 - `backend/app/__init__.py`
 
-Esse backend tinha um único endpoint:
+This backend exposed a single endpoint:
 
 - `GET /health`
 
-Ele existia para provar que:
+That endpoint existed to prove that:
 
-- a aplicação Python subia corretamente
-- o container do backend funcionava
-- o frontend já tinha uma URL de API conhecida
+- the Python application started correctly
+- the backend container worked
+- the frontend already had a stable API URL to target
 
-### Frontend inicial
+### Initial frontend
 
-Foi criado um frontend Vue 3 com Vite, TypeScript e Vuetify:
+A Vue 3 frontend was created with Vite, TypeScript, and Vuetify:
 
 - `frontend/package.json`
 - `frontend/package-lock.json`
@@ -48,27 +48,27 @@ Foi criado um frontend Vue 3 com Vite, TypeScript e Vuetify:
 - `frontend/src/App.vue`
 - `frontend/Dockerfile`
 
-Esse frontend não tinha navegação, store, router nem comunicação real com API. A intenção foi deliberadamente simples: uma tela estática apresentando o estado do setup e as portas do sistema.
+The first frontend intentionally had no router, store, or API integration. It was a static status screen designed to validate the stack and make the running services visible.
 
-### Orquestracao local
+### Local orchestration
 
-Foi criado `docker-compose.yml` na raiz com tres serviços:
+`docker-compose.yml` was added at the repository root with three services:
 
 - `db`
 - `backend`
 - `frontend`
 
-O Compose fazia o seguinte:
+The Compose file handled:
 
-- subia PostgreSQL com volume persistente
-- construía a imagem do backend
-- construía a imagem do frontend
-- publicava `5432`, `8000` e `5173`
-- garantia ordem mínima de subida com `depends_on`
+- PostgreSQL startup with a persistent volume
+- backend image build and runtime
+- frontend image build and runtime
+- port exposure for `5432`, `8000`, and `5173`
+- basic startup ordering with `depends_on`
 
-### Configuracao e documentacao
+### Configuration and documentation
 
-Foram criados ou preenchidos:
+The following files were created or filled in:
 
 - `.env.example`
 - `.gitignore`
@@ -76,16 +76,16 @@ Foram criados ou preenchidos:
 - `tests/conftest.py`
 - `tests/backend/test_health.py`
 
-O `README.md` passou a documentar:
+The README documented:
 
-- pré-requisitos
-- comando de subida com Compose
-- execução sem Docker
-- checklist básico de validação
+- prerequisites
+- local startup with Docker Compose
+- optional startup without Docker
+- a minimal validation checklist
 
-## Arquivos criados no Dia 1
+## Files created on Day 1
 
-Com base no commit `20e6eeb chore: setup inicial`, estes foram os principais arquivos adicionados:
+Based on commit `20e6eeb chore: setup inicial`, these were the main files introduced:
 
 - `.env.example`
 - `.gitignore`
@@ -109,105 +109,105 @@ Com base no commit `20e6eeb chore: setup inicial`, estes foram os principais arq
 - `tests/conftest.py`
 - `tests/backend/test_health.py`
 
-## Decisoes arquiteturais do Dia 1
+## Architectural decisions on Day 1
 
-### 1. Stack inteira em Docker Compose
+### 1. Full stack through Docker Compose
 
-Escolha:
+Decision:
 
-- subir frontend, backend e banco via Compose
+- run frontend, backend, and database through Compose
 
-Por que:
+Why:
 
-- reduz divergência entre ambientes
-- força integração desde o início
-- documenta a arquitetura operacional já no Dia 1
-
-Tradeoff:
-
-- aumenta o tempo de build e troubleshooting logo no começo
-
-### 2. Frontend sem router e sem views
-
-Escolha:
-
-- uma tela única em `App.vue`
-
-Por que:
-
-- o objetivo do Dia 1 era provar infraestrutura, não navegação
-- reduz esforço prematuro em estrutura de UI
+- reduces environment drift
+- forces integration from the beginning
+- documents the runtime architecture on day one
 
 Tradeoff:
 
-- essa tela seria inevitavelmente substituída quando surgisse o upload no Dia 2
+- introduces Docker-related troubleshooting earlier in the project
 
-### 3. Backend mínimo com health check
+### 2. Single-screen frontend
 
-Escolha:
+Decision:
 
-- apenas `GET /health`
+- keep the UI inside `App.vue`
 
-Por que:
+Why:
 
-- health check é a menor superfície útil para validar stack
-- desacopla o primeiro passo de banco, storage e regras de negócio
-
-Tradeoff:
-
-- a estrutura do backend ficou boa para começar, mas ainda rasa para evoluir
-
-### 4. Vuetify desde o começo
-
-Escolha:
-
-- já instalar Vuetify no setup inicial
-
-Por que:
-
-- `descricao.md` já definia essa stack
-- evita migrar visual e componentes no meio da implementação
+- Day 1 was about infrastructure, not navigation
+- avoids premature structure in the UI layer
 
 Tradeoff:
 
-- adiciona peso de dependência antes de existir funcionalidade real
+- the initial screen was always expected to be replaced once upload functionality arrived
 
-## Ajustes posteriores ainda ligados ao Dia 1
+### 3. Minimal backend with health check only
 
-Depois do setup inicial, houve um hardening operacional no commit `7adcf09`:
+Decision:
+
+- implement only `GET /health`
+
+Why:
+
+- it is the smallest useful surface for stack validation
+- it isolates the first milestone from storage, database schema, and business rules
+
+Tradeoff:
+
+- the backend structure was enough to start, but intentionally shallow
+
+### 4. Vuetify from the start
+
+Decision:
+
+- install Vuetify as part of the initial setup
+
+Why:
+
+- `descricao.md` already established it as part of the intended stack
+- avoids reworking the UI foundation later
+
+Tradeoff:
+
+- adds dependency weight before real application behavior exists
+
+## Later improvements still related to Day 1
+
+After the initial setup, commit `7adcf09` added operational hardening:
 
 - `backend/.dockerignore`
 - `frontend/.dockerignore`
-- atualização de `.gitignore`
+- `.gitignore` updates
 
-Isso foi feito para:
+This was done to:
 
-- reduzir build context
-- impedir envio de `node_modules`, `dist`, caches e ambientes locais para a imagem
-- deixar o fluxo Docker mais enxuto
+- shrink the Docker build context
+- avoid sending `node_modules`, build outputs, caches, and local environments to images
+- make the Docker workflow leaner and more predictable
 
-Embora tenha vindo depois, esse ajuste ainda pertence à consolidação do Dia 1.
+Even though this happened later, it still belongs to the Day 1 consolidation work.
 
-## O que nao foi feito no Dia 1
+## What Day 1 intentionally did not include
 
-Deliberadamente ficaram de fora:
+These items were deliberately deferred:
 
-- upload de arquivos
-- banco com tabela de domínio
-- persistência de documentos
-- leitura e streaming de PDFs
-- componentes Vue organizados por feature
-- migrations com Alembic
+- file upload
+- domain tables
+- document persistence
+- PDF reading and streaming
+- feature-level Vue components
+- Alembic migrations
 
-Essa limitação foi intencional para preservar foco no objetivo do dia: ambiente funcionando.
+The goal was to keep the first day focused on an environment that starts and can be verified quickly.
 
-## Validacao esperada do Dia 1
+## Day 1 acceptance criteria
 
-O critério de aceite do Dia 1 era:
+The expected validation for Day 1 was:
 
 - `docker compose up --build`
 - `http://localhost:5173`
 - `http://localhost:8000/health`
-- Postgres saudável no Compose
+- PostgreSQL marked as healthy in Compose
 
-Em termos arquiteturais, o Dia 1 foi um dia de infraestrutura e contrato operacional, não de regra de negócio.
+Architecturally, Day 1 was about infrastructure and runtime contracts, not yet about business functionality.

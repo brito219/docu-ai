@@ -1,33 +1,25 @@
-# Dia 2 — Upload e Persistencia Local
+# Day 2 — Upload and Local Persistence
 
-## Visao geral
+## Overview
 
-O Dia 2 transformou a base criada no Dia 1 em algo útil de verdade: o sistema passou a aceitar upload de PDF, validar o arquivo, salvar o binário localmente e registrar metadados no banco.
+Day 2 turned the Day 1 baseline into a real product slice. The system moved from “the stack runs” to “the application completes a real use case”: uploading a PDF, validating it, storing it on disk, and recording metadata in PostgreSQL.
 
-Em termos de arquitetura, o Dia 2 foi a transição de:
+The implemented flow was:
 
-- aplicação de infraestrutura
+1. the frontend selects a PDF
+2. the frontend sends `multipart/form-data`
+3. the backend validates the file
+4. the backend generates an internal UUID-based filename
+5. the backend saves the PDF to local storage
+6. the backend writes a row to `documents`
+7. the backend returns a public metadata payload
+8. the frontend shows loading, success, or error feedback
 
-para:
+## What was implemented
 
-- aplicação com primeiro fluxo de negócio completo
+### Backend refactor
 
-O fluxo implementado foi:
-
-1. frontend seleciona um PDF
-2. frontend envia `multipart/form-data`
-3. backend valida o arquivo
-4. backend gera nome interno com UUID
-5. backend salva o PDF em storage local
-6. backend grava metadados na tabela `documents`
-7. backend responde com payload público
-8. frontend mostra loading, erro ou sucesso
-
-## O que foi feito
-
-### Refatoracao estrutural do backend
-
-O backend deixou de ser um único `main.py` simples e passou a ter uma divisão mínima por responsabilidade:
+The backend moved from a single-purpose `main.py` to a minimal layered structure:
 
 - `backend/app/api/`
 - `backend/app/core/`
@@ -36,7 +28,7 @@ O backend deixou de ser um único `main.py` simples e passou a ter uma divisão 
 - `backend/app/schemas/`
 - `backend/app/services/`
 
-Arquivos principais criados:
+Main files introduced:
 
 - `backend/app/api/documents.py`
 - `backend/app/core/config.py`
@@ -45,28 +37,28 @@ Arquivos principais criados:
 - `backend/app/schemas/document.py`
 - `backend/app/services/file_service.py`
 
-Essa mudança foi importante porque o Dia 2 introduziu persistência, validação e regras de upload. Manter tudo em `main.py` tornaria o crescimento do projeto desorganizado muito cedo.
+This refactor was necessary because Day 2 introduced validation, persistence, and business logic. Keeping all of that inside `main.py` would have made the project harder to evolve immediately.
 
-### App factory e bootstrap da aplicacao
+### App factory and startup behavior
 
-`backend/app/main.py` foi reescrito para usar `create_app()`.
+`backend/app/main.py` was rewritten around `create_app()`.
 
-Por que isso foi feito:
+Why:
 
-- facilita testes com ambientes isolados
-- permite recriar a app com variáveis de ambiente diferentes
-- reduz acoplamento entre startup global e execução local
+- makes test setup easier
+- allows the app to be recreated with different environment settings
+- reduces coupling between module import and runtime startup
 
-Durante o startup, o backend faz duas coisas:
+On startup, the backend now:
 
-- garante a existência de `LOCAL_STORAGE_PATH`
-- executa `Base.metadata.create_all(bind=engine)`
+- ensures `LOCAL_STORAGE_PATH` exists
+- runs `Base.metadata.create_all(bind=engine)`
 
-### Configuracao central
+### Centralized configuration
 
-Foi criado `backend/app/core/config.py` com `Settings`.
+`backend/app/core/config.py` introduced a `Settings` object.
 
-Variáveis relevantes:
+Relevant variables:
 
 - `APP_ENV`
 - `DATABASE_URL`
@@ -75,28 +67,28 @@ Variáveis relevantes:
 - `LOCAL_STORAGE_PATH`
 - `MAX_UPLOAD_SIZE_MB`
 
-Por que centralizar:
+Why centralize configuration:
 
-- evita espalhar `os.getenv()` pelo código
-- padroniza defaults
-- simplifica testes e evolução futura
+- avoids scattered `os.getenv()` calls
+- creates a single source of truth for defaults
+- simplifies testing and later expansion
 
-### Banco e modelo de dados
+### Database and domain model
 
-Foi criado `backend/app/db/database.py` com:
+`backend/app/db/database.py` introduced:
 
 - `engine`
 - `SessionLocal`
 - `Base`
 - `get_db()`
 
-Foi criado `backend/app/models/document.py` com:
+`backend/app/models/document.py` introduced:
 
-- enum `StorageType`
-- enum `DocumentStatus`
-- modelo `Document`
+- `StorageType`
+- `DocumentStatus`
+- `Document`
 
-Campos persistidos:
+Persisted fields:
 
 - `id`
 - `original_filename`
@@ -109,128 +101,126 @@ Campos persistidos:
 - `created_at`
 - `updated_at`
 
-### Endpoint de upload
+### Upload endpoint
 
-Foi criado:
+The following endpoint was created:
 
 - `POST /documents/upload`
 
-Arquivo:
+File:
 
 - `backend/app/api/documents.py`
 
-Esse endpoint:
+This endpoint:
 
-- recebe `UploadFile`
-- lê o conteúdo em memória
-- valida o arquivo
-- cria o caminho local
-- salva o arquivo
-- persiste metadados no banco
-- retorna um `DocumentResponse`
+- receives `UploadFile`
+- reads the file payload
+- validates the upload
+- generates a local storage path
+- saves the file
+- writes metadata to the database
+- returns a `DocumentResponse`
 
-### Validacao de PDF
+### PDF validation
 
-A validação foi implementada em `backend/app/services/file_service.py`.
+Validation logic was implemented in `backend/app/services/file_service.py`.
 
-Regras aplicadas:
+Rules enforced:
 
-- arquivo obrigatório
-- extensão `.pdf`
-- `content_type` compatível
-- payload não vazio
-- tamanho máximo de `10 MB`
-- assinatura inicial `%PDF`
+- file is required
+- extension must be `.pdf`
+- `content_type` must be one of the allowed PDF-like values
+- payload must not be empty
+- file size must be at most `10 MB`
+- payload must start with `%PDF`
 
-Por que validar assim:
+Why validate this way:
 
-- não confiar só no nome do arquivo
-- evitar arquivos vazios ou arbitrários
-- limitar risco de upload exagerado
-- manter a primeira versão simples, sem parser pesado
+- the filename alone is not trustworthy
+- empty or arbitrary files must be rejected early
+- upload size must be controlled
+- the first version should stay lightweight and deterministic
 
-### Salvar arquivo localmente
+### Local file persistence
 
-O arquivo é salvo usando:
+Uploaded files are stored using:
 
-- nome físico interno com `UUID`
-- mesma extensão do arquivo original
-- diretório vindo de `LOCAL_STORAGE_PATH`
+- an internal UUID-based filename
+- the original file extension
+- a directory derived from `LOCAL_STORAGE_PATH`
 
-Por que usar UUID:
+Why UUIDs are used:
 
-- evita colisão de nomes
-- desacopla nome original do nome físico
-- melhora segurança operacional
+- avoids filename collisions
+- decouples the original filename from the physical storage name
+- improves operational safety
 
-### Tratamento de falha de persistencia
+### Failure handling
 
-Em `backend/app/api/documents.py`, se o banco falhar depois do arquivo já ter sido salvo:
+If the database write fails after the PDF was already saved:
 
-- faz `rollback`
-- remove o arquivo do disco
+- the session is rolled back
+- the saved file is deleted
 
-Por que isso importa:
+Why this matters:
 
-- evita lixo órfão no storage
-- mantém coerência entre banco e filesystem
+- avoids orphaned files on disk
+- keeps the database and filesystem in sync
 
-## Frontend implementado no Dia 2
+## Frontend changes
 
-### Mudanca de foco da UI
+### New UI goal
 
-`frontend/src/App.vue` deixou de ser uma landing de status e passou a ser uma tela de upload.
+`frontend/src/App.vue` stopped being a static setup screen and became a working upload screen.
 
-Foram implementados:
+Implemented behavior:
 
-- seleção de arquivo com `v-file-input`
-- envio via `axios`
-- mensagem de erro
-- estado de loading
-- mensagem de sucesso
-- exibição dos metadados retornados pela API
+- file selection via `v-file-input`
+- upload through `axios`
+- loading state
+- error state
+- success state
+- metadata display after a successful upload
 
-### Cliente HTTP dedicado
+### Dedicated API client
 
-Foi criado:
+New file:
 
 - `frontend/src/services/api.ts`
 
-Ele encapsula a `baseURL` usando `VITE_API_URL`.
+Why:
 
-Por que isso foi feito:
+- keeps the API base URL out of the component
+- prepares the codebase for future endpoints
+- avoids repeated configuration
 
-- evita URL hardcoded no componente
-- prepara o terreno para endpoints futuros
-- reduz repetição
+### Explicit UI states
 
-### Estados de interface
-
-O componente passou a trabalhar com:
+The component now uses:
 
 - `idle`
 - `loading`
 - `success`
 - `error`
 
-Por que explicitar estados:
+Why explicit states matter:
 
-- torna o fluxo previsível
-- melhora UX
-- evita lógica ambígua no template
+- the behavior becomes predictable
+- the UI becomes easier to reason about
+- the template avoids ambiguous conditional logic
 
-### Dependencia nova
+### New frontend dependency
 
-Foi adicionada a dependência:
+Added:
 
 - `axios`
 
-em:
+Files affected:
 
 - `frontend/package.json`
 - `frontend/package-lock.json`
 
-## Arquivos criados no Dia 2
+## Files created on Day 2
 
 ### Backend
 
@@ -251,11 +241,11 @@ em:
 
 - `frontend/src/services/api.ts`
 
-### Testes
+### Tests
 
 - `tests/backend/test_documents_upload.py`
 
-## Arquivos modificados no Dia 2
+## Files modified on Day 2
 
 - `.env.example`
 - `.gitignore`
@@ -268,150 +258,146 @@ em:
 - `tests/conftest.py`
 - `tests/backend/test_health.py`
 
-## Arquivos apagados no Dia 2
+## Files effectively replaced
 
-Do ponto de vista de Git e arquitetura, nao houve remoções funcionais relevantes já consolidadas no histórico. Houve substituição de conteúdo em arquivos existentes, especialmente:
+There were no important feature files removed and abandoned. The main changes were structural replacements inside existing files, especially:
 
 - `backend/app/main.py`
 - `frontend/src/App.vue`
 
-Mas isso ocorreu como modificação estrutural, não como remoção de arquivo seguida de abandono.
+## Architectural decisions on Day 2
 
-## Decisoes arquiteturais do Dia 2
+### 1. `create_all` instead of Alembic
 
-### 1. `create_all` em vez de Alembic
+Decision:
 
-Escolha:
+- use `Base.metadata.create_all()`
 
-- usar `Base.metadata.create_all()`
+Why:
 
-Por que:
-
-- mais rápido para colocar o fluxo de upload em produção local
-- menos atrito no segundo dia
-- suficiente para um schema inicial único
+- faster path to a working upload flow
+- lower friction for the second development day
+- sufficient for a single initial table
 
 Tradeoff:
 
-- não há versionamento formal de migrations ainda
-- isso provavelmente mudará quando o schema crescer
+- no formal migration history yet
+- schema evolution will eventually need Alembic
 
-### 2. Storage local em vez de S3
+### 2. Local storage instead of S3
 
-Escolha:
+Decision:
 
-- persistência local em filesystem
+- store uploaded PDFs on the local filesystem
 
-Por que:
+Why:
 
-- o Dia 2 explicitamente pede persistência local
-- reduz custo e superfície de erro
-- mantém o projeto alinhado com a prioridade “rodar localmente”
-
-Tradeoff:
-
-- não resolve distribuição, durabilidade externa nem acesso remoto
-
-### 3. Persistir `local_path` no banco, mas nao expor na API
-
-Escolha:
-
-- guardar caminho local em `documents.local_path`
-- omitir esse campo em `DocumentResponse`
-
-Por que:
-
-- o backend precisa saber onde o arquivo está
-- o cliente não deve conhecer caminho interno do servidor
+- Day 2 explicitly targets local persistence
+- keeps costs at zero
+- reduces infrastructure complexity
 
 Tradeoff:
 
-- exige schema de resposta separado do modelo ORM, o que foi corretamente introduzido com `DocumentResponse`
+- no remote durability or distribution yet
 
-### 4. Validacao por assinatura `%PDF`
+### 3. Persist `local_path` but hide it from the API
 
-Escolha:
+Decision:
 
-- verificar bytes iniciais do arquivo
+- keep `local_path` in the database
+- exclude it from `DocumentResponse`
 
-Por que:
+Why:
 
-- é um meio barato de confirmar o tipo real
-- é mais forte que confiar apenas em extensão e content type
-
-Tradeoff:
-
-- não substitui validação semântica completa do PDF
-- PDFs extremamente malformados podem passar da assinatura inicial
-
-### 5. Tela unica no frontend
-
-Escolha:
-
-- não adicionar router nem múltiplas views ainda
-
-Por que:
-
-- mantém o escopo do Dia 2 focado no fluxo de upload
-- evita antecipar a navegação do Dia 3
+- the backend needs an internal pointer to the file
+- clients should not see server filesystem paths
 
 Tradeoff:
 
-- o componente `App.vue` ficou mais pesado
-- no futuro ele provavelmente será quebrado em componentes e views
+- requires a proper response schema instead of returning ORM objects directly
 
-### 6. Testes com SQLite temporário
+### 4. Signature check with `%PDF`
 
-Escolha:
+Decision:
 
-- não depender do PostgreSQL do Compose para testes
+- verify the initial bytes of the upload
 
-Por que:
+Why:
 
-- testes precisam ser rápidos, isolados e repetíveis
-- elimina dependência de infraestrutura externa
+- cheap and useful validation
+- stronger than checking extension and content type alone
 
 Tradeoff:
 
-- SQLite não reproduz 100% do comportamento do PostgreSQL
-- mas é suficiente para validar o fluxo básico deste dia
+- not a full semantic PDF validation
 
-## Testes adicionados
+### 5. Single-screen upload UI
+
+Decision:
+
+- keep the frontend on one screen without router or view structure yet
+
+Why:
+
+- keeps Day 2 focused on the upload flow
+- avoids prematurely solving Day 3 navigation
+
+Tradeoff:
+
+- `App.vue` became heavier than it should be long term
+
+### 6. SQLite-based isolated tests
+
+Decision:
+
+- avoid depending on the Docker PostgreSQL instance for tests
+
+Why:
+
+- tests should be fast and reproducible
+- contributors should not need live infrastructure to validate the flow
+
+Tradeoff:
+
+- SQLite does not perfectly mirror PostgreSQL behavior
+- it is still sufficient for this milestone
+
+## Tests introduced or updated
 
 ### `tests/conftest.py`
 
-Foi criado um helper de teste que:
+This helper now:
 
-- injeta `PYTHONPATH`
-- redefine `DATABASE_URL`
-- redefine `LOCAL_STORAGE_PATH`
-- redefine `MAX_UPLOAD_SIZE_MB`
-- recria os módulos relevantes
-- gera `TestClient` isolado
+- injects `PYTHONPATH`
+- overrides `DATABASE_URL`
+- overrides `LOCAL_STORAGE_PATH`
+- overrides `MAX_UPLOAD_SIZE_MB`
+- recreates relevant modules
+- yields an isolated `TestClient`
 
 ### `tests/backend/test_health.py`
 
-O teste de health foi adaptado para:
+The health test was updated to:
 
-- usar ambiente de teste isolado
-- garantir que a app factory funciona
+- run against an isolated app instance
+- validate the test environment wiring
 
 ### `tests/backend/test_documents_upload.py`
 
-Cobre:
+This file covers:
 
-- upload válido
-- persistência do arquivo
-- persistência de metadados
-- rejeição por extensão errada
-- rejeição por assinatura inválida
-- rejeição por tamanho acima do limite
+- successful upload
+- file persistence
+- metadata persistence
+- rejection by invalid extension
+- rejection by invalid PDF signature
+- rejection by file size limit
 
-## Atualizacoes auxiliares
+## Supporting changes
 
 ### `.env.example`
 
-Passou a incluir:
+New variables added:
 
 - `STORAGE_TYPE=LOCAL`
 - `LOCAL_STORAGE_PATH=/app/storage`
@@ -419,39 +405,37 @@ Passou a incluir:
 
 ### `.gitignore`
 
-Passou a ignorar:
+New ignore entry:
 
 - `backend/storage/`
 
-Por que:
+Why:
 
-- PDFs enviados não devem entrar no Git
+- uploaded PDFs should never be committed
 
 ### `README.md`
 
-Foi atualizado para refletir:
+The main README was updated to describe:
 
-- endpoint de upload
-- existência do fluxo do Dia 2
-- nova checklist de validação
+- the upload endpoint
+- the Day 2 local upload flow
+- the new runtime validation checklist
 
-## Estado atual do Dia 2
+## Current repository state
 
-Importante: no momento desta documentação, o Dia 2 está implementado no working tree local, mas ainda não aparece como commit separado no histórico exibido por `git log`.
+At the time this document was written:
 
-Ou seja:
+- Day 1 and Docker hardening were already present in Git history
+- Day 2 existed in the current working tree
+- the documentation reflects the actual code state rather than a future plan
 
-- Dia 1 e hardening Docker já estão em commits
-- Dia 2 está implementado no código local atual
-- a documentação abaixo descreve esse estado real do working tree
+## Technical summary
 
-## Resumo tecnico
+Day 2 established four foundational capabilities:
 
-O Dia 2 consolidou quatro pilares fundamentais do produto:
+- the first real business endpoint
+- the first persisted domain model
+- the first full UI-to-API workflow
+- the first isolated backend integration tests
 
-- primeiro endpoint de negócio
-- primeiro modelo persistido
-- primeiro fluxo real de UI para API
-- primeira estratégia de teste de integração local
-
-Foi o ponto em que o projeto deixou de ser apenas “estrutura que sobe” e passou a ser “aplicação que executa um caso de uso de verdade”.
+This was the point where the project stopped being only “a stack that starts” and became “an application that executes a real use case”.

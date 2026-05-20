@@ -1,29 +1,39 @@
 # DocuAI Viewer
 
-Base setup for Day 1 of the DocuAI Viewer project. This repository now includes a Vue 3 + Vuetify frontend, a FastAPI backend, and PostgreSQL orchestrated with Docker Compose.
+DocuAI Viewer is a full-stack application for uploading, validating, storing, and later viewing PDF documents. The current implementation focuses on local-first development: PDFs are stored on disk, document metadata is stored in PostgreSQL, the API is built with FastAPI, and the UI is built with Vue 3 and Vuetify.
+
+## What the project does
+
+- Uploads PDF files from the browser
+- Validates file extension, content type, file size, and PDF signature
+- Stores PDFs locally on the backend host
+- Persists document metadata in PostgreSQL
+- Exposes a documented FastAPI API with Swagger UI
+- Provides a simple upload interface with loading, success, and error states
 
 ## Stack
 
-- Frontend: Vue 3, TypeScript, Vite, Vuetify
-- Backend: FastAPI, Uvicorn
+- Frontend: Vue 3, TypeScript, Vite, Vuetify, Axios
+- Backend: FastAPI, SQLAlchemy, Uvicorn
 - Database: PostgreSQL 16
-- Dev tooling: Docker Compose, `npm`, `venv` + `pip`
+- Dev environment: Docker Compose
 
-## Project Structure
+## Project structure
 
 - `frontend/` Vue application
 - `backend/` FastAPI application
 - `tests/backend/` backend tests
-- `docker-compose.yml` local stack orchestration
-- `.env.example` required environment variables
+- `jorney/` implementation notes and development history
+- `docker-compose.yml` local orchestration
+- `.env.example` environment template
 
 ## Prerequisites
 
-- Docker Engine with Compose plugin available as `docker compose`
-- Node.js 20+
-- Python 3.12+
+- Docker Engine with the Compose plugin available as `docker compose`
+- Node.js 20+ if you want to run the frontend outside Docker
+- Python 3.12+ if you want to run the backend outside Docker
 
-## Local Setup
+## Quick start
 
 1. Copy the environment file:
 
@@ -31,31 +41,45 @@ Base setup for Day 1 of the DocuAI Viewer project. This repository now includes 
 cp .env.example .env
 ```
 
-2. Start the full stack:
+2. Start the stack:
 
 ```bash
 docker compose up --build
 ```
 
-3. Access the services:
+3. Open the application:
 
 - Frontend: `http://localhost:5173`
-- Backend health check: `http://localhost:8000/health`
-- Backend upload endpoint: `http://localhost:8000/documents/upload`
-- PostgreSQL: `localhost:5432`
+- Swagger UI: `http://localhost:8000/docs`
+- Health check: `http://localhost:8000/health`
 
-## Day 2 Flow
+## API overview
 
-The application now supports local PDF upload with metadata persistence.
+### `GET /health`
 
-- The frontend sends the selected PDF as `multipart/form-data`
-- The backend validates extension, content type, file size, and PDF signature
-- The file is stored in the local storage directory configured by `LOCAL_STORAGE_PATH`
-- Document metadata is stored in PostgreSQL
+Returns a basic health payload for the running API.
 
-## Running Without Docker
+### `POST /documents/upload`
 
-Backend:
+Accepts `multipart/form-data` with a `file` field, validates the PDF, stores it locally, and saves metadata in PostgreSQL.
+
+## Environment variables
+
+Key variables used by the application:
+
+- `APP_ENV`: application environment label
+- `DATABASE_URL`: backend database connection string
+- `STORAGE_TYPE`: current storage mode, set to `LOCAL`
+- `LOCAL_STORAGE_PATH`: backend directory for uploaded PDFs
+- `MAX_UPLOAD_SIZE_MB`: maximum accepted upload size
+- `FRONTEND_ORIGIN`: allowed CORS origin
+- `VITE_API_URL`: frontend API base URL
+
+See `.env.example` for the current defaults.
+
+## Run without Docker
+
+### Backend
 
 ```bash
 cd backend
@@ -65,7 +89,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Frontend:
+### Frontend
 
 ```bash
 cd frontend
@@ -73,10 +97,22 @@ npm install
 npm run dev -- --host 0.0.0.0
 ```
 
-## Validation Checklist
+## Validation checklist
 
 - `docker compose up --build` completes successfully
 - `GET /health` returns HTTP `200`
-- Frontend loads and shows the upload screen
-- Uploading a valid PDF returns success and persists metadata
-- PostgreSQL container starts with the configured credentials
+- `POST /documents/upload` accepts a valid PDF
+- Uploaded PDFs are stored under the configured local storage path
+- Document metadata is written to PostgreSQL
+- The frontend displays loading, success, and error states correctly
+
+## Current scope
+
+The repository currently covers the first functional milestone:
+
+- local PDF upload
+- local file persistence
+- metadata persistence
+- basic UI for upload feedback
+
+Future milestones such as document listing, inline viewing, HTTP range streaming, text extraction, and semantic workflows are tracked separately in the project planning and journey notes.

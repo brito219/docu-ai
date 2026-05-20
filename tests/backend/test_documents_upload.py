@@ -47,7 +47,7 @@ def test_upload_rejects_non_pdf_extension(tmp_path: Path) -> None:
         )
 
     assert response.status_code == 415
-    assert "extensao .pdf" in response.json()["detail"]
+    assert ".pdf extension" in response.json()["detail"]
 
 
 def test_upload_rejects_invalid_pdf_signature(tmp_path: Path) -> None:
@@ -58,7 +58,7 @@ def test_upload_rejects_invalid_pdf_signature(tmp_path: Path) -> None:
         )
 
     assert response.status_code == 422
-    assert "PDF valido" in response.json()["detail"]
+    assert "valid PDF signature" in response.json()["detail"]
 
 
 def test_upload_rejects_file_above_limit(tmp_path: Path) -> None:

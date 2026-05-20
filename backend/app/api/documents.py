@@ -11,7 +11,13 @@ from app.services.file_service import build_storage_path, save_pdf_file, validat
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-@router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload a PDF document",
+    description="Validates the uploaded PDF, stores the file locally, and creates a metadata record in PostgreSQL.",
+)
 async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
